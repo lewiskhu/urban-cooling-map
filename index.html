@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Urban Cooling Tracker (Live)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .info-panel {
+            position: absolute; top: 20px; right: 20px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2); max-width: 300px;
+        }
+        .legend-gradient {
+            height: 10px; width: 100%;
+            background: linear-gradient(to right, blue, yellow, red);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-panel">
+        <h3>Live Cooling Monitor</h3>
+        <p><b>Data Source:</b> Google Earth Engine (Daily Feed)</p>
+        <p><b>Metric:</b> Land Surface Temp (LST)</p>
+        <div id="stats">Loading data...</div>
+        <div class="legend-gradient"></div>
+        <small>Blue: Cool (< 30°C) | Red: Hot (> 40°C)</small>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+        // Paste your published Google Sheet CSV URL here
+        const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-..../pub?gid=0&single=true&output=csv";
+
+        const map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        function getColor(tempK) {
+            const tempC = tempK - 273.15;
+            return tempC > 40 ? '#ff0000' :
+                   tempC > 35 ? '#ff4500' :
+                   tempC > 30 ? '#ffa500' :
+                   tempC > 25 ? '#ffff00' :
+                   '#00bfff';
+        }
+
+        function parseGeo(geoStr) {
+            if (!geoStr) return null;
+            try {
+                const g = JSON.parse(geoStr);
+                if (g.type === 'Point' && Array.isArray(g.coordinates) && g.coordinates.length === 2) {
+                    return { lon: parseFloat(g.coordinates[0]), lat: parseFloat(g.coordinates[1]) };
+                }
+            } catch (e) { return null; }
+            return null;
+        }
+
+        Papa.parse(DATA_URL, {
+            download: true,
+            header: true,
+            dynamicTyping: true,
+            complete: function(results) {
+                const data = results.data;
+                document.getElementById('stats').innerText = `${data.length} cities tracked.`;
+
+                data.forEach(row => {
+                    const loc = parseGeo(row['.geo']);
+                    const lst = row.LST_Mean;
+                    if (loc && !isNaN(loc.lat) && !isNaN(loc.lon) && lst) {
+                        L.circleMarker([loc.lat, loc.lon], {
+                            radius: 6,
+                            fillColor: getColor(lst),
+                            color: "#000",
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        })
+                        .bindPopup(`
+                            <b>City ID:</b> ${row.ID_UC_G0}<br>
+                            <b>LST:</b> ${(lst - 273.15).toFixed(1)}°C<br>
+                            <b>Green Roof Index:</b> ${row.Green_Roof_Index ?? 'N/A'}<br>
+                            <small>Lat: ${loc.lat.toFixed(2)}, Lon: ${loc.lon.toFixed(2)}</small>
+                        `)
+                        .addTo(map);
+                    }
+                });
+            },
+            error: function(err) {
+                console.error("Error loading CSV:", err);
+                document.getElementById('stats').innerText = "Error loading data.";
+            }
+        });
+    </script>
+</body>
+</html>
