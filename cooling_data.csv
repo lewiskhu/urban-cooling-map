@@ -1,0 +1,3 @@
+Name,Lat,Lon,Description,Cooling_Score,LST_Celsius,NDVI,Height_m,Species,Canopy_Radius_m,VPD_Current_kPa,VPD_2050_Scenario,Energy_Savings_USD,Decay_Pct_2050
+"Central Park Hub",40.785091,-73.968285,"Primary Sensor Node",8.9,26.2,0.78,14.2,"Quercus robur",6.5,1.1,2.4,52.40,10.5
+"Times Sq Planter",40.758896,-73.985130,"Street Level Vegetation",3.2,34.5,0.25,2.1,"Acer rubrum",1.5,2.4,3.8,12.10,25.0
